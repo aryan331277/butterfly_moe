@@ -9,7 +9,7 @@ NUM_RUNS    = 500
 WARMUP      = 100
 
 @triton.jit
-    def fused_butterfly_kernel(
+def fused_butterfly_kernel(
         X_ptr,                  # (N, D) input
         Y_ptr,                  # (N, D) output
         ANGLES_ptr,             # (num_layers * D//2,)  precomputed flat angle table
