@@ -68,4 +68,4 @@ ButterflyMoE demonstrates that the `O(N)` memory scaling long assumed necessary 
 
 - Experiments are conducted at small scale (4-layer, d=512, single Tesla T4 GPU) as a proof of concept; production-scale validation (64–128 experts) is future work.
 - On-device energy/latency profiling is based on a theoretical roofline model, not physical edge-hardware measurement.
-- Code release is planned upon acceptance, not yet available.
+
