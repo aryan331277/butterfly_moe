@@ -1,0 +1,7 @@
+torch>=2.0
+datasets
+transformers
+matplotlib
+numpy
+pyyaml
+triton>=2.1; sys_platform == "linux"
