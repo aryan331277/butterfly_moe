@@ -1,3 +1,11 @@
+from typing import Tuple
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from .butterfly import ButterflyRotation, BitNetQuantize, BitNetQuantizeNBit
+
+
 class HO_Expert(nn.Module):
     def __init__(self, d_model: int, d_ff: int, num_butterfly_layers: int = None):
         super().__init__()
@@ -49,6 +57,47 @@ class HOMoE_Layer(nn.Module):
             y_expert = self.experts[i](x_expert.unsqueeze(1), w_base_quant).squeeze(1)
             expert_positions = (selected_experts[batch_idx, seq_idx] == i).nonzero(as_tuple=True)[1]
             weights = routing_weights[batch_idx, seq_idx, expert_positions].unsqueeze(-1)
+            output[batch_idx, seq_idx] += weights * y_expert
+        return output, {'load_balance': load_balance_loss, 'expert_counts': expert_counts}
+
+
+class HOMoE_Layer_NBit(HOMoE_Layer):
+    def __init__(self, d_model, d_ff, num_experts=8, top_k=2,
+                 num_butterfly_layers=None, n_bits=1.58):
+        super().__init__(d_model, d_ff, num_experts, top_k, num_butterfly_layers)
+        self.n_bits = n_bits
+
+    def forward(self, x, training=True):
+        batch, seq_len, d_model = x.shape
+        if self.n_bits == 1.58:
+            w_base_quant = BitNetQuantize.apply(self.w_base)
+        else:
+            w_base_quant = BitNetQuantizeNBit.apply(self.w_base, self.n_bits)
+
+        gate_logits = self.gate(x)
+        if training:
+            gate_logits = gate_logits + torch.randn_like(gate_logits) * self.noise_std
+        routing_weights, selected_experts = torch.topk(gate_logits, self.top_k, dim=-1)
+        routing_weights = F.softmax(routing_weights, dim=-1)
+        expert_counts = torch.zeros(self.num_experts, device=x.device)
+        for i in range(self.num_experts):
+            expert_counts[i] = (selected_experts == i).float().sum()
+        expert_counts = expert_counts / expert_counts.sum().clamp(min=1)
+        load_balance_loss = (expert_counts - 1.0 / self.num_experts).pow(2).mean()
+        output = torch.zeros(batch, seq_len, self.d_ff, device=x.device, dtype=x.dtype)
+        for i in range(self.num_experts):
+            expert_mask = (selected_experts == i).any(dim=-1)
+            if not expert_mask.any():
+                continue
+            batch_idx, seq_idx = torch.where(expert_mask)
+            x_expert = x[batch_idx, seq_idx]
+            y_expert = self.experts[i](x_expert.unsqueeze(1), w_base_quant).squeeze(1)
+            expert_positions = (selected_experts[batch_idx, seq_idx] == i).nonzero(as_tuple=True)[1]
+            weights = routing_weights[batch_idx, seq_idx, expert_positions].unsqueeze(-1)
+            output[batch_idx, seq_idx] += weights * y_expert
+        return output, {'load_balance': load_balance_loss, 'expert_counts': expert_counts}
+
+
 class StandardMoE_Layer(nn.Module):
     def __init__(self, d_model: int, d_ff: int, num_experts: int = 8, top_k: int = 2):
         super().__init__()
@@ -85,10 +134,7 @@ class StandardMoE_Layer(nn.Module):
         return output, {'load_balance': load_balance_loss, 'expert_counts': expert_counts}
 
 
-
-
 class StandardMoEQuant_Layer(nn.Module):
-
     def __init__(self, d_model: int, d_ff: int, num_experts: int = 8, top_k: int = 2):
         super().__init__()
         self.d_model = d_model
@@ -135,7 +181,5 @@ class StandardMoEQuant_Layer(nn.Module):
             expert_positions = (selected_experts[batch_idx, seq_idx] == i).nonzero(as_tuple=True)[1]
             weights = routing_weights[batch_idx, seq_idx, expert_positions].unsqueeze(-1)
             output[batch_idx, seq_idx] += weights * y_expert
-        return output, {'load_balance': load_balance_loss, 'expert_counts': expert_counts}
- 
-            output[batch_idx, seq_idx] += weights * y_expert
+            
         return output, {'load_balance': load_balance_loss, 'expert_counts': expert_counts}
