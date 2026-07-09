@@ -64,6 +64,23 @@ Standard MoE memory scales linearly with expert count — `O(N·d²)` — making
 
 ButterflyMoE demonstrates that the `O(N)` memory scaling long assumed necessary for MoE architectures is an artifact of implementation, not a structural requirement. By reframing experts as orbits of a shared quantized substrate, it achieves compression ratios that *grow* with scale, retains competitive accuracy against dense and standard-MoE baselines, actively improves quantization stability through training rather than fighting it post-hoc, and validates its efficiency claims with both a hardware-grounded roofline model and real fused-kernel throughput numbers — turning MoE from memory-bound to compute-bound on edge silicon.
 
+## Repository Structure
+ 
+```
+butterflymoe/              # pip-installable package
+├── models/                # All neural network modules
+│   ├── butterfly.py       # ButterflyRotation, BitNetQuantize
+│   ├── experts.py         # HO_Expert, HOMoE_Layer, StandardMoE variants
+│   ├── transformer.py     # Transformer block wrappers
+│   └── language_models.py # Full LM models
+├── data/                  # Dataset classes
+├── training/              # Training loops, evaluation
+└── benchmarks/            # Throughput, memory, Triton kernels
+experiments/               # Paper experiment scripts (run directly)
+configs/                   # YAML configuration files
+scripts/                   # Entry points
+```
+
 ## Limitations (as noted by the authors)
 
 - Experiments are conducted at small scale (4-layer, d=512, single Tesla T4 GPU) as a proof of concept; production-scale validation (64–128 experts) is future work.
