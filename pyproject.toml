@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "butterflymoe"
+version = "1.0.0"
+description = "Compression-Scalable Ternary Experts via Structured Butterfly Orbits"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "datasets",
+    "transformers",
+    "matplotlib",
+    "numpy",
+]
+
+[project.optional-dependencies]
+triton = ["triton>=2.1"]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools.packages.find]
+include = ["butterflymoe*"]
