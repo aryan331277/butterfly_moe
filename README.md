@@ -1,6 +1,5 @@
 # ButterflyMoE: Compression-Scalable Ternary Experts via Structured Butterfly Orbits
 
-**Author:** Aryan Karmore — Indian Institute of Information Technology, Nagpur
 **Paper:** [arXiv:2601.13563](https://arxiv.org/abs/2601.13563)
 
 ## Overview
